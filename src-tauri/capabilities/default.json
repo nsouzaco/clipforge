@@ -4,6 +4,10 @@
   "description": "Main window capability",
   "windows": ["main"],
   "permissions": [
-    "core:default"
+    "core:default",
+    "dialog:allow-save",
+    "dialog:default",
+    "core:path:default",
+    "core:event:default"
   ]
 }
