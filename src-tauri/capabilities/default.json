@@ -9,7 +9,6 @@
     "dialog:allow-save",
     "dialog:default",
     "core:path:default",
-    "core:event:default",
-    "core:asset:default"
+    "core:event:default"
   ]
 }
