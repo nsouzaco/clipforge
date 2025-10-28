@@ -77,32 +77,32 @@ export const MediaLibrary: React.FC = () => {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="mb-4">
+      <div className="mb-4 flex-shrink-0">
         <h2 className="text-lg font-semibold text-white mb-1">Media Library</h2>
         <p className="text-sm text-gray-400">{mediaLibrary.length} items</p>
       </div>
 
-      {/* Drag & Drop Zone */}
+      {/* Drag & Drop Zone - Compact */}
       <div 
-        className="flex-1 border-2 border-dashed border-gray-600 rounded-lg p-6 flex flex-col items-center justify-center text-center hover:border-gray-500 transition-colors cursor-pointer"
+        className="border-2 border-dashed border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-gray-500 transition-colors cursor-pointer flex-shrink-0 mb-4"
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
       >
         {/* Folder Icon */}
-        <div className="text-gray-400 mb-4">
-          <svg className="w-12 h-12 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+        <div className="text-gray-400 mb-2">
+          <svg className="w-10 h-10 mx-auto" fill="currentColor" viewBox="0 0 20 20">
             <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
           </svg>
         </div>
         
-        <p className="text-gray-300 mb-4">Drag and drop video files here.</p>
+        <p className="text-sm text-gray-300 mb-2">Drag and drop video files here.</p>
         
-        <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors">
+        <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-sm rounded-md transition-colors">
           Choose Files
         </button>
         
-        <p className="text-xs text-gray-500 mt-4">Supports MP4, MOV, WebM, AVI, MKV</p>
+        <p className="text-xs text-gray-500 mt-2">MP4, MOV, WebM, AVI, MKV</p>
       </div>
 
       {/* Hidden file input */}
@@ -114,9 +114,9 @@ export const MediaLibrary: React.FC = () => {
         className="hidden"
       />
 
-      {/* Media List */}
+      {/* Media List - Scrollable */}
       {mediaLibrary.length > 0 && (
-        <div className="mt-4 space-y-2">
+        <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
           {mediaLibrary.map((media) => (
             <div 
               key={media.id}

@@ -9,8 +9,14 @@ export const Timeline: React.FC = () => {
 
   const basePixelsPerSecond = 50; // Base zoom level
   const pixelsPerSecond = basePixelsPerSecond * zoomLevel;
-  const timelineHeight = 120;
+  const trackHeight = 60; // Height of each track
+  const rulerHeight = 40; // Height of time ruler
+  const trackPadding = 10; // Vertical padding between tracks
   const maxTimelineDuration = 30 * 60; // 30 minutes in seconds
+  
+  // Calculate total timeline height based on number of clips
+  const numTracks = Math.max(timeline.length, 1);
+  const timelineHeight = rulerHeight + (numTracks * (trackHeight + trackPadding));
   
   // Calculate the actual timeline duration based on clips
   const actualTimelineDuration = timeline.reduce((max, clip) => {
@@ -47,8 +53,7 @@ export const Timeline: React.FC = () => {
     ctx.font = '12px monospace';
     ctx.textAlign = 'center';
     
-    const rulerHeight = 30;
-    const rulerY = 10;
+    const rulerY = 0;
     
     // Draw ruler background
     ctx.fillStyle = '#374151'; // gray-700
@@ -104,41 +109,101 @@ export const Timeline: React.FC = () => {
       }
     }
 
-    // Draw playhead
-    const playheadX = playheadPosition * pixelsPerSecond;
-    ctx.strokeStyle = '#ef4444'; // red-500
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(playheadX, 0);
-    ctx.lineTo(playheadX, canvas.height);
-    ctx.stroke();
-
-    // Draw timeline clips
-    const trackY = 60;
-    const trackHeight = 40;
+    // Draw track backgrounds and labels
+    for (let i = 0; i < numTracks; i++) {
+      const trackY = rulerHeight + (i * (trackHeight + trackPadding));
+      
+      // Draw track background
+      ctx.fillStyle = '#374151'; // gray-700
+      ctx.fillRect(0, trackY, canvas.width, trackHeight);
+      
+      // Draw track border
+      ctx.strokeStyle = '#4b5563'; // gray-600
+      ctx.lineWidth = 1;
+      ctx.strokeRect(0, trackY, canvas.width, trackHeight);
+      
+      // Draw track label
+      ctx.fillStyle = '#9ca3af'; // gray-400
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`Track ${i + 1}`, 5, trackY + 15);
+    }
     
-    timeline.forEach((clip) => {
+    // Draw timeline clips - each on its own track
+    timeline.forEach((clip, index) => {
       const media = mediaLibrary.find(m => m.id === clip.mediaId);
       if (!media) return;
 
       const clipWidth = (clip.outSec - clip.inSec) * pixelsPerSecond;
       const clipX = clip.startTimeSec * pixelsPerSecond;
+      const trackY = rulerHeight + (index * (trackHeight + trackPadding));
 
-      // Draw clip block
-      ctx.fillStyle = '#3b82f6'; // blue-500
+      // Draw clip block with gradient
+      const gradient = ctx.createLinearGradient(clipX, trackY, clipX, trackY + trackHeight);
+      gradient.addColorStop(0, '#3b82f6'); // blue-500
+      gradient.addColorStop(1, '#2563eb'); // blue-600
+      ctx.fillStyle = gradient;
       ctx.fillRect(clipX, trackY, clipWidth, trackHeight);
+
+      // Draw clip border
+      ctx.strokeStyle = '#1e40af'; // blue-800
+      ctx.lineWidth = 2;
+      ctx.strokeRect(clipX, trackY, clipWidth, trackHeight);
 
       // Draw clip label
       ctx.fillStyle = '#ffffff';
       ctx.font = '12px sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText(media.name, clipX + 5, trackY + 25);
+      ctx.fillText(media.name, clipX + 10, trackY + 20);
+      
+      // Draw duration
+      const duration = (clip.outSec - clip.inSec).toFixed(2);
+      ctx.font = '10px sans-serif';
+      ctx.fillStyle = '#e5e7eb'; // gray-200
+      ctx.fillText(`${duration}s`, clipX + 10, trackY + 35);
 
-      // Draw trim handles (simplified for MVP)
-      ctx.fillStyle = '#f59e0b'; // amber-500
-      ctx.fillRect(clipX - 5, trackY, 10, trackHeight);
-      ctx.fillRect(clipX + clipWidth - 5, trackY, 10, trackHeight);
+      // Draw trim handles - more visible and separate
+      const handleWidth = 8;
+      ctx.fillStyle = '#fbbf24'; // amber-400
+      
+      // Left trim handle
+      ctx.fillRect(clipX, trackY, handleWidth, trackHeight);
+      ctx.strokeStyle = '#f59e0b'; // amber-500
+      ctx.lineWidth = 1;
+      ctx.strokeRect(clipX, trackY, handleWidth, trackHeight);
+      
+      // Right trim handle
+      ctx.fillRect(clipX + clipWidth - handleWidth, trackY, handleWidth, trackHeight);
+      ctx.strokeRect(clipX + clipWidth - handleWidth, trackY, handleWidth, trackHeight);
+      
+      // Draw trim handle indicators (vertical lines)
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(clipX + handleWidth / 2, trackY + 15);
+      ctx.lineTo(clipX + handleWidth / 2, trackY + trackHeight - 15);
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.moveTo(clipX + clipWidth - handleWidth / 2, trackY + 15);
+      ctx.lineTo(clipX + clipWidth - handleWidth / 2, trackY + trackHeight - 15);
+      ctx.stroke();
     });
+
+    // Draw playhead LAST so it's always on top
+    const playheadX = playheadPosition * pixelsPerSecond;
+    ctx.strokeStyle = '#ef4444'; // red-500
+    ctx.lineWidth = 3; // Made slightly thicker for better visibility
+    ctx.beginPath();
+    ctx.moveTo(playheadX, 0);
+    ctx.lineTo(playheadX, canvas.height);
+    ctx.stroke();
+
+    // Draw playhead handle at the top for easier dragging
+    ctx.fillStyle = '#ef4444'; // red-500
+    ctx.beginPath();
+    ctx.arc(playheadX, rulerHeight / 2, 6, 0, Math.PI * 2);
+    ctx.fill();
 
   }, [timeline, playheadPosition, mediaLibrary, pixelsPerSecond, zoomLevel, timelineDuration]);
 
@@ -183,9 +248,9 @@ export const Timeline: React.FC = () => {
   const zoomPercentage = Math.round(zoomLevel * 100);
 
   return (
-    <div className="p-4">
-      {/* Timeline Header */}
-      <div className="flex items-center justify-between mb-4">
+    <div className="flex flex-col h-full">
+      {/* Timeline Header - Fixed at top, doesn't scroll */}
+      <div className="flex items-center justify-between p-4 pb-2 flex-shrink-0">
         <div className="flex items-center space-x-3">
           <h3 className="text-lg font-semibold text-white">Timeline</h3>
           <button
@@ -221,31 +286,40 @@ export const Timeline: React.FC = () => {
         </div>
       </div>
 
-      {/* Timeline Canvas */}
+      {/* 
+        Timeline Canvas Container - Scrollable area
+        
+        ROOT CAUSE OF PREVIOUS FAILURE:
+        1. p-4 padding on parent consumed space from the 320px container
+        2. With padding, the inner flex-1 element had less than expected available height
+        3. flex-1 tried to grow, but parent's content box was already reduced by padding
+        4. Result: canvas was clipped because container couldn't grow beyond constrained space
+        
+        THE FIX:
+        1. Moved padding from parent to header only (no padding on root)
+        2. Added px-4 (horizontal padding) to this container for consistent spacing
+        3. flex-1 now uses the FULL 320px height minus header height (no padding overhead)
+        4. min-h-0 allows this flex child to shrink, enabling overflow-y-auto to work
+        5. Canvas can now be taller than container, triggering scrollbars properly
+      */}
       <div 
         ref={containerRef}
-        className={`w-full overflow-x-auto overflow-y-hidden bg-gray-700 rounded-lg relative ${isHovering ? 'ring-2 ring-blue-500' : ''}`}
-        style={{ height: `${timelineHeight + 20}px` }}
+        className={`mx-4 mb-4 overflow-auto bg-gray-700 rounded-lg relative flex-1 ${isHovering ? 'ring-2 ring-blue-500' : ''}`}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onMouseUp={handleMouseUp}
       >
         {/* Dashed highlight overlay when hovering */}
         {isHovering && (
-          <div className="absolute inset-0 border-2 border-dashed border-blue-400 rounded-lg pointer-events-none" />
+          <div className="absolute inset-0 border-2 border-dashed border-blue-400 rounded-lg pointer-events-none z-10" />
         )}
         
         <canvas
           ref={canvasRef}
           className="cursor-pointer"
           onClick={handleCanvasClick}
-          style={{ height: `${timelineHeight}px` }}
+          style={{ display: 'block', height: `${timelineHeight}px` }}
         />
-        
-        {/* Track Label */}
-        <div className="absolute left-2 top-16 text-xs text-gray-400 font-medium pointer-events-none">
-          Track 1
-        </div>
       </div>
     </div>
   );

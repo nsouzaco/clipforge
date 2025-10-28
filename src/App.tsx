@@ -2,13 +2,24 @@ import { VideoPreview } from './components/VideoPreview';
 import { Timeline } from './components/Timeline';
 import { MediaLibrary } from './components/MediaLibrary';
 import { useAppStore } from './stores/appStore';
+import { useState, useRef } from 'react';
 
 function App() {
   const { draggingFile, dragCursor, updateDragCursor, endDrag } = useAppStore();
+  const [timelineHeight, setTimelineHeight] = useState(320);
+  const [isResizing, setIsResizing] = useState(false);
+  const startYRef = useRef(0);
+  const startHeightRef = useRef(320);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (draggingFile) {
       updateDragCursor(e.clientX, e.clientY);
+    }
+    
+    if (isResizing) {
+      const deltaY = startYRef.current - e.clientY; // Positive when dragging up
+      const newHeight = Math.max(200, Math.min(800, startHeightRef.current + deltaY));
+      setTimelineHeight(newHeight);
     }
   };
 
@@ -16,6 +27,16 @@ function App() {
     if (draggingFile) {
       endDrag();
     }
+    if (isResizing) {
+      setIsResizing(false);
+    }
+  };
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    startYRef.current = e.clientY;
+    startHeightRef.current = timelineHeight;
   };
 
   return (
@@ -53,8 +74,19 @@ function App() {
         </div>
       </div>
 
-      {/* Timeline */}
-      <div className="bg-gray-800 border-t border-gray-700">
+      {/* Timeline with Resize Handle - Fixed at bottom, grows upward */}
+      <div 
+        className="bg-gray-800 border-t border-gray-700 flex flex-col fixed bottom-0 left-0 right-0" 
+        style={{ height: `${timelineHeight}px`, zIndex: 20 }}
+      >
+        {/* Resize Handle */}
+        <div
+          className={`absolute top-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-blue-500 transition-colors ${isResizing ? 'bg-blue-500' : 'bg-transparent'}`}
+          onMouseDown={handleResizeStart}
+          style={{ zIndex: 30 }}
+        >
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-1 bg-gray-400 rounded-full" />
+        </div>
         <Timeline />
       </div>
 
