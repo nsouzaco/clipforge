@@ -2,6 +2,7 @@ import { VideoPreview } from './components/VideoPreview';
 import { Timeline } from './components/Timeline';
 import { MediaLibrary } from './components/MediaLibrary';
 import { TrimConfirmationDialog } from './components/TrimConfirmationDialog';
+import { ExportDialog } from './components/ExportDialog';
 import { useAppStore } from './stores/appStore';
 import { useState, useRef } from 'react';
 
@@ -9,6 +10,7 @@ function App() {
   const { draggingFile, dragCursor, updateDragCursor, endDrag } = useAppStore();
   const [timelineHeight, setTimelineHeight] = useState(320);
   const [isResizing, setIsResizing] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const startYRef = useRef(0);
   const startHeightRef = useRef(320);
 
@@ -52,14 +54,17 @@ function App() {
           <h1 className="text-xl font-bold text-white">ClipForge</h1>
           <span className="text-sm text-gray-400 ml-2">v2.0</span>
         </div>
-        <div className="flex gap-3">
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors">
-            Import
-          </button>
-          <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors">
-            Export
-          </button>
-        </div>
+            <div className="flex gap-3">
+              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors">
+                Import
+              </button>
+              <button 
+                onClick={() => setIsExportDialogOpen(true)}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors"
+              >
+                Export
+              </button>
+            </div>
       </header>
 
       {/* Main Content */}
@@ -107,6 +112,12 @@ function App() {
 
       {/* Trim Confirmation Dialog */}
       <TrimConfirmationDialog />
+
+      {/* Export Dialog */}
+      <ExportDialog 
+        isOpen={isExportDialogOpen} 
+        onClose={() => setIsExportDialogOpen(false)} 
+      />
     </div>
   );
 }
