@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { AppState, MediaFile, TimelineClip } from '../types';
+import { AppState, MediaFile, TimelineClip, PendingTrim } from '../types';
 
 export const useAppStore = create<AppState>((set, get) => ({
   mediaLibrary: [],
@@ -10,6 +10,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   zoomLevel: 1, // 1 = 100%, 0.5 = 50%, 2 = 200%
   draggingFile: null,
   dragCursor: { x: 0, y: 0 },
+  pendingTrim: null,
 
   addMediaFile: (file: MediaFile) => {
     set((state) => ({
@@ -80,5 +81,66 @@ export const useAppStore = create<AppState>((set, get) => ({
       timeline: [...state.timeline, newClip],
       selectedClip: file.id, // Auto-select the added clip
     }));
+  },
+
+  setPendingTrim: (trim: PendingTrim | null) => {
+    set({ pendingTrim: trim });
+  },
+
+  confirmTrim: () => {
+    const { pendingTrim, timeline } = get();
+    if (!pendingTrim) return;
+
+    console.log('✅ Confirming trim:', pendingTrim);
+
+    // Update the clip with new trim values
+    const updatedTimeline = timeline.map(clip =>
+      clip.id === pendingTrim.clipId
+        ? { ...clip, inSec: pendingTrim.newInSec, outSec: pendingTrim.newOutSec }
+        : clip
+    );
+
+    set({ timeline: updatedTimeline, pendingTrim: null });
+
+    // Reorder timeline to close gaps
+    get().reorderTimeline();
+  },
+
+  cancelTrim: () => {
+    const { pendingTrim } = get();
+    if (!pendingTrim) return;
+
+    console.log('❌ Canceling trim, reverting to original values');
+
+    // Revert to old values
+    set((state) => ({
+      timeline: state.timeline.map(clip =>
+        clip.id === pendingTrim.clipId
+          ? { ...clip, inSec: pendingTrim.oldInSec, outSec: pendingTrim.oldOutSec }
+          : clip
+      ),
+      pendingTrim: null
+    }));
+  },
+
+  reorderTimeline: () => {
+    const { timeline } = get();
+    
+    console.log('🔄 Reordering timeline to close gaps...');
+
+    // Sort clips by their current startTimeSec
+    const sortedClips = [...timeline].sort((a, b) => a.startTimeSec - b.startTimeSec);
+
+    // Reposition clips to be adjacent (no gaps)
+    let currentPosition = 0;
+    const reorderedClips = sortedClips.map(clip => {
+      const clipDuration = clip.outSec - clip.inSec;
+      const updatedClip = { ...clip, startTimeSec: currentPosition };
+      currentPosition += clipDuration;
+      return updatedClip;
+    });
+
+    set({ timeline: reorderedClips });
+    console.log('✅ Timeline reordered');
   },
 }));

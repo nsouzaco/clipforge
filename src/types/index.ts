@@ -16,6 +16,15 @@ export type TimelineClip = {
   outSec: number;       // source end time
 };
 
+export type PendingTrim = {
+  clipId: string;
+  oldInSec: number;
+  oldOutSec: number;
+  newInSec: number;
+  newOutSec: number;
+  type: 'left' | 'right';
+};
+
 export interface AppState {
   mediaLibrary: MediaFile[];
   timeline: TimelineClip[];
@@ -25,6 +34,7 @@ export interface AppState {
   zoomLevel: number;
   draggingFile: MediaFile | null;
   dragCursor: { x: number; y: number };
+  pendingTrim: PendingTrim | null;
   
   // Actions
   addMediaFile: (file: MediaFile) => void;
@@ -38,4 +48,8 @@ export interface AppState {
   updateDragCursor: (x: number, y: number) => void;
   endDrag: () => void;
   appendClipToEnd: (file: MediaFile) => void;
+  setPendingTrim: (trim: PendingTrim | null) => void;
+  confirmTrim: () => void;
+  cancelTrim: () => void;
+  reorderTimeline: () => void;
 }

@@ -1,6 +1,7 @@
 import { VideoPreview } from './components/VideoPreview';
 import { Timeline } from './components/Timeline';
 import { MediaLibrary } from './components/MediaLibrary';
+import { TrimConfirmationDialog } from './components/TrimConfirmationDialog';
 import { useAppStore } from './stores/appStore';
 import { useState, useRef } from 'react';
 
@@ -103,6 +104,9 @@ function App() {
           {draggingFile.name}
         </div>
       )}
+
+      {/* Trim Confirmation Dialog */}
+      <TrimConfirmationDialog />
     </div>
   );
 }

@@ -13,7 +13,8 @@ export const Timeline: React.FC = () => {
   const [isHovering, setIsHovering] = useState(false);
   const [trimDrag, setTrimDrag] = useState<TrimHandle | null>(null);
   const [hoveredHandle, setHoveredHandle] = useState<TrimHandle | null>(null);
-  const { timeline, playheadPosition, mediaLibrary, isPlaying, zoomLevel, setZoomLevel, draggingFile, appendClipToEnd, endDrag, updateTimelineClip } = useAppStore();
+  const [trimStartValues, setTrimStartValues] = useState<{ inSec: number; outSec: number } | null>(null);
+  const { timeline, playheadPosition, mediaLibrary, isPlaying, zoomLevel, setZoomLevel, draggingFile, appendClipToEnd, endDrag, updateTimelineClip, setPendingTrim } = useAppStore();
 
   const basePixelsPerSecond = 50; // Base zoom level
   const pixelsPerSecond = basePixelsPerSecond * zoomLevel;
@@ -262,10 +263,15 @@ export const Timeline: React.FC = () => {
     // Check if clicking on a trim handle
     const handle = getTrimHandleAtPosition(x, y);
     if (handle) {
-      console.log('✂️ Started trimming:', handle);
-      setTrimDrag(handle);
-      e.preventDefault();
-      return;
+      const clip = timeline.find(c => c.id === handle.clipId);
+      if (clip) {
+        console.log('✂️ Started trimming:', handle);
+        // Store the starting values for potential revert
+        setTrimStartValues({ inSec: clip.inSec, outSec: clip.outSec });
+        setTrimDrag(handle);
+        e.preventDefault();
+        return;
+      }
     }
 
     // Otherwise, move playhead
@@ -309,17 +315,31 @@ export const Timeline: React.FC = () => {
   };
 
   const handleCanvasMouseUp = () => {
-    if (trimDrag) {
+    if (trimDrag && trimStartValues) {
       const clip = timeline.find(c => c.id === trimDrag.clipId);
       if (clip) {
-        console.log('✅ Trim completed:', {
-          type: trimDrag.type,
-          inSec: clip.inSec.toFixed(2),
-          outSec: clip.outSec.toFixed(2),
-          duration: (clip.outSec - clip.inSec).toFixed(2)
-        });
+        // Check if anything actually changed
+        const hasChanged = clip.inSec !== trimStartValues.inSec || clip.outSec !== trimStartValues.outSec;
+        
+        if (hasChanged) {
+          console.log('✂️ Trim drag ended, showing confirmation dialog');
+          
+          // Set pending trim for confirmation
+          setPendingTrim({
+            clipId: clip.id,
+            oldInSec: trimStartValues.inSec,
+            oldOutSec: trimStartValues.outSec,
+            newInSec: clip.inSec,
+            newOutSec: clip.outSec,
+            type: trimDrag.type
+          });
+        } else {
+          console.log('No trim changes detected');
+        }
       }
+      
       setTrimDrag(null);
+      setTrimStartValues(null);
     }
   };
 
