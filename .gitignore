@@ -48,3 +48,8 @@ coverage/
 # Temporary folders
 tmp/
 temp/
+
+# Local documentation (keep out of repo)
+RECORDING_FEATURES_SUMMARY.md
+VIDEO_PLAYBACK_DEBUG_PROMPT.md
+WEBCAM_LIMITATION.md

@@ -97,13 +97,45 @@ See `TRANSCRIPTION_SETUP.md` for detailed setup instructions.
 npm run tauri dev
 ```
 
-### Building for Production
+## 📦 Download & Installation
 
+### Pre-built Binaries
+
+**macOS (Apple Silicon)**
+- Download: `ClipForge_1.0.0_aarch64.dmg` (4.6 MB)
+- Location: Check [Releases](../../releases) page (coming soon)
+
+**Requirements:**
+- macOS 10.13 or later
+- Apple Silicon (M1/M2/M3) or Intel Mac
+- FFmpeg installed (`brew install ffmpeg`)
+
+**Installation:**
+1. Download the DMG file
+2. Open the DMG and drag ClipForge to Applications
+3. Right-click and select "Open" first time (macOS security)
+4. Grant screen recording & microphone permissions when prompted
+
+### Building from Source
+
+**Build the production app:**
 ```bash
 npm run tauri build
 ```
 
-The built application will be in `src-tauri/target/release/`.
+**Output locations:**
+- **App Bundle**: `src-tauri/target/release/bundle/macos/ClipForge.app`
+- **DMG Installer**: `src-tauri/target/release/bundle/dmg/ClipForge_1.0.0_aarch64.dmg`
+- **Raw Executable**: `src-tauri/target/release/app`
+
+**Build time:** ~3-5 minutes (first build may take longer)
+
+**Platform-specific builds:**
+- macOS: Produces `.app` bundle and `.dmg` installer
+- Windows: Produces `.exe` and `.msi` (planned)
+- Linux: Produces `.AppImage` and `.deb` (planned)
+
+**Note:** Current build is optimized for macOS. Cross-platform builds coming soon!
 
 ## 📁 Project Structure
 
