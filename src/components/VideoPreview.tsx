@@ -2,8 +2,6 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { readFile } from '@tauri-apps/plugin-fs';
 
-console.log('VideoPreview component loaded');
-
 export const VideoPreview: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const blobUrlRef = useRef<string | null>(null);
@@ -32,7 +30,6 @@ export const VideoPreview: React.FC = () => {
       return;
     }
     
-    console.log('🎥 Loading video:', currentMedia.path);
     const video = videoRef.current;
     
     const loadVideo = async () => {
@@ -48,7 +45,6 @@ export const VideoPreview: React.FC = () => {
         const blob = new Blob([data], { type: 'video/mp4' });
         const blobUrl = URL.createObjectURL(blob);
         blobUrlRef.current = blobUrl;
-        console.log('📁 Created blob URL:', blobUrl);
         video.src = blobUrl;
         setIsPlaying(false);
       } catch (error) {
@@ -109,28 +105,17 @@ export const VideoPreview: React.FC = () => {
   const handlePlayPause = async () => {
     const video = videoRef.current;
     if (!video || !currentMedia) {
-      console.log('⚠️ No video element or media');
       return;
     }
-
-    console.log('🎮 Play/pause clicked. Current state:', {
-      isPlaying,
-      paused: video.paused,
-      readyState: video.readyState,
-      canPlay: video.readyState >= video.HAVE_FUTURE_DATA,
-      src: video.src
-    });
 
     if (isPlaying) {
       video.pause();
     } else {
       // Check if video is ready
       if (video.readyState < video.HAVE_METADATA) {
-        console.log('⏳ Waiting for video metadata...');
         video.addEventListener('loadedmetadata', async () => {
           try {
             await video.play();
-            console.log('✅ Video play() succeeded after loading');
           } catch (error) {
             console.error('❌ Failed to play video:', error);
           }
@@ -139,7 +124,6 @@ export const VideoPreview: React.FC = () => {
       } else {
         try {
           await video.play();
-          console.log('✅ Video play() succeeded');
         } catch (error) {
           console.error('❌ Failed to play video:', error);
         }
@@ -218,6 +202,7 @@ export const VideoPreview: React.FC = () => {
               <button
                 onClick={() => {
                   const firstFile = mediaLibrary[0];
+                  
                   const newClip = {
                     id: Math.random().toString(36).substr(2, 9),
                     sourceFile: firstFile.path,
@@ -227,7 +212,7 @@ export const VideoPreview: React.FC = () => {
                     trimEnd: firstFile.duration,
                     track: 0,
                   };
-                  console.log('🎬 Adding test clip:', newClip);
+                  
                   const { addClip, selectClip } = useAppStore.getState();
                   addClip(newClip);
                   selectClip(newClip.id);
@@ -331,4 +316,3 @@ export const VideoPreview: React.FC = () => {
     </div>
   );
 };
-
