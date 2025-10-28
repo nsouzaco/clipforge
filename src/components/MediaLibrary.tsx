@@ -120,12 +120,12 @@ export const MediaLibrary: React.FC = () => {
           {mediaLibrary.map((media) => (
             <div 
               key={media.id}
-              draggable
-              onDragStart={(e) => {
-                e.dataTransfer.setData('mediaId', media.id);
-                e.dataTransfer.effectAllowed = 'copy';
+              onMouseDown={(e) => {
+                e.preventDefault();
+                useAppStore.getState().startDrag(media);
+                useAppStore.getState().updateDragCursor(e.clientX, e.clientY);
               }}
-              className="bg-gray-700 rounded-md p-3 cursor-move hover:bg-gray-600 transition-colors"
+              className="bg-gray-700 rounded-md p-3 cursor-move hover:bg-gray-600 transition-colors select-none"
               onClick={() => useAppStore.getState().selectClip(media.id)}
             >
               <div className="flex items-center space-x-3">

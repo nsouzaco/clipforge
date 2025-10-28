@@ -1,10 +1,11 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useAppStore } from '../stores/appStore';
 
 export const Timeline: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { timeline, playheadPosition, mediaLibrary, isPlaying, zoomLevel, setZoomLevel } = useAppStore();
+  const [isHovering, setIsHovering] = useState(false);
+  const { timeline, playheadPosition, mediaLibrary, isPlaying, zoomLevel, setZoomLevel, draggingFile, appendClipToEnd, endDrag } = useAppStore();
 
   const basePixelsPerSecond = 50; // Base zoom level
   const pixelsPerSecond = basePixelsPerSecond * zoomLevel;
@@ -152,38 +153,22 @@ export const Timeline: React.FC = () => {
     useAppStore.getState().setPlayheadPosition(Math.min(timeSeconds, timelineDuration));
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
+  const handleMouseEnter = () => {
+    if (draggingFile) {
+      setIsHovering(true);
+    }
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const mediaId = e.dataTransfer.getData('mediaId');
-    if (!mediaId) return;
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+  };
 
-    const media = mediaLibrary.find(m => m.id === mediaId);
-    if (!media) return;
-
-    // Calculate drop position on timeline
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const dropTimeSeconds = Math.max(0, x / pixelsPerSecond);
-
-    // Create new timeline clip at drop position
-    const newClip = {
-      id: Math.random().toString(36).substr(2, 9),
-      mediaId: media.id,
-      startTimeSec: dropTimeSeconds,
-      inSec: 0,
-      outSec: media.durationSec,
-    };
-
-    useAppStore.getState().addTimelineClip(newClip);
-    useAppStore.getState().selectClip(media.id);
+  const handleMouseUp = () => {
+    if (draggingFile && isHovering) {
+      appendClipToEnd(draggingFile);
+      endDrag();
+      setIsHovering(false);
+    }
   };
 
   const togglePlay = () => {
@@ -239,11 +224,17 @@ export const Timeline: React.FC = () => {
       {/* Timeline Canvas */}
       <div 
         ref={containerRef}
-        className="w-full overflow-x-auto overflow-y-hidden bg-gray-700 rounded-lg relative"
+        className={`w-full overflow-x-auto overflow-y-hidden bg-gray-700 rounded-lg relative ${isHovering ? 'ring-2 ring-blue-500' : ''}`}
         style={{ height: `${timelineHeight + 20}px` }}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onMouseUp={handleMouseUp}
       >
+        {/* Dashed highlight overlay when hovering */}
+        {isHovering && (
+          <div className="absolute inset-0 border-2 border-dashed border-blue-400 rounded-lg pointer-events-none" />
+        )}
+        
         <canvas
           ref={canvasRef}
           className="cursor-pointer"

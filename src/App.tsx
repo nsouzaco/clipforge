@@ -4,10 +4,26 @@ import { MediaLibrary } from './components/MediaLibrary';
 import { useAppStore } from './stores/appStore';
 
 function App() {
-  const { mediaLibrary, timeline } = useAppStore();
+  const { draggingFile, dragCursor, updateDragCursor, endDrag } = useAppStore();
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (draggingFile) {
+      updateDragCursor(e.clientX, e.clientY);
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (draggingFile) {
+      endDrag();
+    }
+  };
 
   return (
-    <div className="h-screen bg-gray-900 text-white flex flex-col">
+    <div 
+      className="h-screen bg-gray-900 text-white flex flex-col"
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+    >
       {/* Header */}
       <header className="bg-gray-800 p-4 flex items-center justify-between border-b border-gray-700">
         <div className="flex items-center">
@@ -41,6 +57,20 @@ function App() {
       <div className="bg-gray-800 border-t border-gray-700">
         <Timeline />
       </div>
+
+      {/* Drag Ghost */}
+      {draggingFile && (
+        <div
+          className="fixed pointer-events-none bg-blue-500 bg-opacity-50 text-white px-3 py-2 rounded-md shadow-lg"
+          style={{
+            left: dragCursor.x + 10,
+            top: dragCursor.y + 10,
+            zIndex: 9999,
+          }}
+        >
+          {draggingFile.name}
+        </div>
+      )}
     </div>
   );
 }

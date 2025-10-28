@@ -4,35 +4,53 @@ import { useAppStore } from '../stores/appStore';
 export const VideoPreview: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const animationFrameRef = useRef<number | null>(null);
-  const { mediaLibrary, selectedClip, playheadPosition, isPlaying, setPlayheadPosition } = useAppStore();
+  const currentClipIndexRef = useRef<number>(0);
+  const { mediaLibrary, timeline, playheadPosition, isPlaying, setPlayheadPosition, setIsPlaying } = useAppStore();
 
-  const selectedMedia = mediaLibrary.find(media => media.id === selectedClip);
+  // Get current clip to play based on index
+  const currentClip = timeline[currentClipIndexRef.current];
+  const selectedMedia = currentClip ? mediaLibrary.find(media => media.id === currentClip.mediaId) : null;
 
   useEffect(() => {
-    if (videoRef.current && selectedMedia) {
+    if (videoRef.current && selectedMedia && currentClip) {
       videoRef.current.src = selectedMedia.path;
-      videoRef.current.currentTime = 0;
+      videoRef.current.currentTime = currentClip.inSec;
     }
-  }, [selectedMedia]);
+  }, [selectedMedia, currentClip]);
 
-  useEffect(() => {
-    if (videoRef.current) {
-      // Only seek if the difference is significant (more than 0.5 seconds)
-      // This prevents fighting with the video's natural playback
-      const timeDiff = Math.abs(videoRef.current.currentTime - playheadPosition);
-      if (timeDiff > 0.5) {
-        videoRef.current.currentTime = playheadPosition;
+  // Handle video ending - move to next clip
+  const handleVideoEnded = useCallback(() => {
+    if (currentClipIndexRef.current < timeline.length - 1) {
+      // Move to next clip
+      currentClipIndexRef.current += 1;
+      const nextClip = timeline[currentClipIndexRef.current];
+      if (nextClip && videoRef.current) {
+        const nextMedia = mediaLibrary.find(m => m.id === nextClip.mediaId);
+        if (nextMedia) {
+          videoRef.current.src = nextMedia.path;
+          videoRef.current.currentTime = nextClip.inSec;
+          setPlayheadPosition(nextClip.startTimeSec);
+          if (isPlaying) {
+            videoRef.current.play().catch(err => console.error('Play error:', err));
+          }
+        }
       }
+    } else {
+      // All clips played, stop
+      setIsPlaying(false);
+      currentClipIndexRef.current = 0;
     }
-  }, [playheadPosition]);
+  }, [timeline, mediaLibrary, isPlaying, setPlayheadPosition, setIsPlaying]);
 
   // Sync playhead with video playback using requestAnimationFrame
   const syncPlayhead = useCallback(() => {
-    if (videoRef.current && isPlaying) {
-      setPlayheadPosition(videoRef.current.currentTime);
+    if (videoRef.current && isPlaying && currentClip) {
+      const videoTime = videoRef.current.currentTime;
+      const timelinePosition = currentClip.startTimeSec + (videoTime - currentClip.inSec);
+      setPlayheadPosition(timelinePosition);
       animationFrameRef.current = requestAnimationFrame(syncPlayhead);
     }
-  }, [isPlaying, setPlayheadPosition]);
+  }, [isPlaying, setPlayheadPosition, currentClip]);
 
   useEffect(() => {
     if (isPlaying) {
@@ -74,6 +92,7 @@ export const VideoPreview: React.FC = () => {
             ref={videoRef}
             className="w-full h-full object-contain"
             controls={false}
+            onEnded={handleVideoEnded}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-500">
