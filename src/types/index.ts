@@ -7,6 +7,8 @@ export type MediaFile = {
   width: number;
   height: number;
   sizeBytes: number;
+  transcript?: string; // AI-generated transcript
+  transcriptLoading?: boolean; // Loading state for transcript generation
 };
 
 export type ScreenSource = {
@@ -69,6 +71,7 @@ export interface AppState {
   
   // Actions
   addMediaFile: (file: MediaFile) => void;
+  updateMediaFile: (fileId: string, updates: Partial<MediaFile>) => void;
   selectClip: (clipId: string | null) => void;
   setPlayheadPosition: (position: number) => void;
   setIsPlaying: (playing: boolean) => void;

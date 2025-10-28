@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useAppStore } from '../stores/appStore';
+import { TimelineClip } from '../types';
 
 type TrimHandle = {
   clipId: string;

@@ -1,10 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { open } from '@tauri-apps/plugin-dialog';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api/core';
+import { TranscriptDialog } from './TranscriptDialog';
 
 export const MediaLibrary: React.FC = () => {
-  const { mediaLibrary, addMediaFile } = useAppStore();
+  const { mediaLibrary, addMediaFile, updateMediaFile } = useAppStore();
+  const [selectedTranscript, setSelectedTranscript] = useState<{ fileName: string; transcript: string; fileId: string } | null>(null);
+  const [isTranscriptDialogOpen, setIsTranscriptDialogOpen] = useState(false);
+  const [transcriptLoading, setTranscriptLoading] = useState(false);
 
   const handleFileSelect = async () => {
     try {
@@ -86,6 +91,54 @@ export const MediaLibrary: React.FC = () => {
     handleFileSelect();
   };
 
+  const handleTranscribe = async (fileId: string, filePath: string, fileName: string) => {
+    try {
+      const media = mediaLibrary.find(m => m.id === fileId);
+      
+      // If transcript already exists, just show it
+      if (media?.transcript) {
+        setSelectedTranscript({ fileName, transcript: media.transcript, fileId });
+        setIsTranscriptDialogOpen(true);
+        return;
+      }
+
+      // Start transcription
+      setTranscriptLoading(true);
+      updateMediaFile(fileId, { transcriptLoading: true });
+      setSelectedTranscript({ fileName, transcript: '', fileId });
+      setIsTranscriptDialogOpen(true);
+
+      console.log('🎤 Starting transcription for:', fileName);
+      
+      const transcript = await invoke<string>('transcribe_video', {
+        videoPath: filePath,
+      });
+
+      console.log('✅ Transcript received:', transcript.substring(0, 100) + '...');
+
+      // Save transcript to media file
+      updateMediaFile(fileId, { 
+        transcript, 
+        transcriptLoading: false 
+      });
+
+      setSelectedTranscript({ fileName, transcript, fileId });
+      setTranscriptLoading(false);
+
+    } catch (error) {
+      console.error('Transcription error:', error);
+      alert(`Transcription failed: ${error}\n\nMake sure you've set your OpenAI API key in the .env file.`);
+      updateMediaFile(fileId, { transcriptLoading: false });
+      setTranscriptLoading(false);
+      setIsTranscriptDialogOpen(false);
+    }
+  };
+
+  const closeTranscriptDialog = () => {
+    setIsTranscriptDialogOpen(false);
+    setSelectedTranscript(null);
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -124,29 +177,69 @@ export const MediaLibrary: React.FC = () => {
           {mediaLibrary.map((media) => (
             <div 
               key={media.id}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                useAppStore.getState().startDrag(media);
-                useAppStore.getState().updateDragCursor(e.clientX, e.clientY);
-              }}
-              className="bg-gray-700 rounded-md p-3 cursor-move hover:bg-gray-600 transition-colors select-none"
-              onClick={() => useAppStore.getState().selectClip(media.id)}
+              className="bg-gray-700 rounded-md p-3 hover:bg-gray-600 transition-colors select-none"
             >
               <div className="flex items-center space-x-3">
-                <div className="text-blue-400">
+                <div 
+                  className="text-blue-400 cursor-move"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    useAppStore.getState().startDrag(media);
+                    useAppStore.getState().updateDragCursor(e.clientX, e.clientY);
+                  }}
+                >
                   <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                   </svg>
                 </div>
-                <div className="flex-1 min-w-0">
+                <div 
+                  className="flex-1 min-w-0 cursor-pointer"
+                  onClick={() => useAppStore.getState().selectClip(media.id)}
+                >
                   <p className="text-sm font-medium text-white truncate">{media.name}</p>
                   <p className="text-xs text-gray-400">{media.durationSec.toFixed(2)}s</p>
                 </div>
+                
+                {/* AI Transcribe Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleTranscribe(media.id, media.path, media.name);
+                  }}
+                  disabled={media.transcriptLoading}
+                  className={`flex-shrink-0 p-2 rounded-md transition-colors ${
+                    media.transcript
+                      ? 'bg-green-600 hover:bg-green-700 text-white'
+                      : 'bg-purple-600 hover:bg-purple-700 text-white'
+                  } ${media.transcriptLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  title={media.transcript ? 'View transcript' : 'Generate AI transcript'}
+                >
+                  {media.transcriptLoading ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {media.transcript ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      )}
+                    </svg>
+                  )}
+                </button>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {/* Transcript Dialog */}
+      <TranscriptDialog
+        isOpen={isTranscriptDialogOpen}
+        onClose={closeTranscriptDialog}
+        transcript={selectedTranscript?.transcript || null}
+        fileName={selectedTranscript?.fileName || ''}
+        isLoading={transcriptLoading}
+      />
     </div>
   );
 };

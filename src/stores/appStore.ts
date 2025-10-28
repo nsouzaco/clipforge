@@ -28,6 +28,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
   },
 
+  updateMediaFile: (fileId: string, updates: Partial<MediaFile>) => {
+    set((state) => ({
+      mediaLibrary: state.mediaLibrary.map(file =>
+        file.id === fileId ? { ...file, ...updates } : file
+      )
+    }));
+  },
+
   selectClip: (clipId: string | null) => {
     set({ selectedClip: clipId });
   },

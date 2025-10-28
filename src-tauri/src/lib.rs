@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 mod recording;
 mod video;
+mod transcription;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ClipData {
@@ -164,16 +165,16 @@ fn generate_thumbnail(path: String) -> Result<String, String> {
 #[tauri::command]
 fn save_blob_to_file(data: Vec<u8>, file_path: String) -> Result<String, String> {
     use std::io::Write;
-    
+
     println!("💾 Saving blob to file: {}", file_path);
     println!("📦 Blob size: {} bytes", data.len());
-    
+
     let path = std::path::Path::new(&file_path);
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
             .map_err(|e| format!("Failed to create directory: {}", e))?;
     }
-    
+
     let mut file = std::fs::File::create(&file_path)
         .map_err(|e| format!("Failed to create file: {}", e))?;
     
@@ -184,8 +185,17 @@ fn save_blob_to_file(data: Vec<u8>, file_path: String) -> Result<String, String>
     Ok(file_path)
 }
 
+#[tauri::command]
+async fn transcribe_video(video_path: String) -> Result<String, String> {
+    println!("🎤 Starting transcription for: {}", video_path);
+    transcription::transcribe_video(&video_path).await
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+  // Load .env file for API keys
+  dotenv::dotenv().ok();
+  
   tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
     .invoke_handler(tauri::generate_handler![
@@ -197,7 +207,8 @@ pub fn run() {
       get_recording_duration,
       import_video,
       generate_thumbnail,
-      save_blob_to_file
+      save_blob_to_file,
+      transcribe_video
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
