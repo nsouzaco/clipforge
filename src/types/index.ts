@@ -1,6 +1,7 @@
 export type MediaFile = {
   id: string;
-  path: string;
+  path: string; // Actual file system path for FFmpeg
+  previewUrl: string; // Browser-compatible URL for video player
   name: string;
   durationSec: number;
   width: number;

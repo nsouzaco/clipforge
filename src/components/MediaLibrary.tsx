@@ -1,54 +1,70 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { useAppStore } from '../stores/appStore';
+import { open } from '@tauri-apps/plugin-dialog';
+import { convertFileSrc } from '@tauri-apps/api/core';
 
 export const MediaLibrary: React.FC = () => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { mediaLibrary, addMediaFile, addTimelineClip } = useAppStore();
+  const { mediaLibrary, addMediaFile } = useAppStore();
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
-    
-    // Validate file type
-    const supportedTypes = ['video/mp4', 'video/quicktime'];
-    if (!supportedTypes.includes(file.type)) {
-      alert('Please select an MP4 or MOV file');
-      return;
-    }
-
+  const handleFileSelect = async () => {
     try {
-      // Create video element to get actual duration
+      // Use Tauri's open dialog to get actual file path
+      const selected = await open({
+        multiple: false,
+        filters: [{
+          name: 'Video',
+          extensions: ['mp4', 'mov']
+        }],
+        title: 'Select Video File'
+      });
+
+      if (!selected) {
+        console.log('No file selected');
+        return;
+      }
+
+      const filePath = selected as string;
+      console.log('📁 Selected file:', filePath);
+
+      // Convert file path to URL for browser video player
+      const previewUrl = convertFileSrc(filePath);
+      
+      // Create video element to get metadata
       const video = document.createElement('video');
       video.preload = 'metadata';
       
-      const getVideoMetadata = (): Promise<{duration: number, width: number, height: number}> => {
+      const getVideoMetadata = (): Promise<{duration: number, width: number, height: number, size: number}> => {
         return new Promise((resolve, reject) => {
           video.onloadedmetadata = () => {
             resolve({
               duration: video.duration,
               width: video.videoWidth,
-              height: video.videoHeight
+              height: video.videoHeight,
+              size: 0 // Size not available from browser
             });
           };
           video.onerror = () => reject(new Error('Failed to load video metadata'));
-          video.src = URL.createObjectURL(file);
+          video.src = previewUrl;
         });
       };
 
       const metadata = await getVideoMetadata();
 
+      // Extract filename from path
+      const fileName = filePath.split('/').pop() || filePath.split('\\').pop() || 'video.mp4';
+
       const mediaFile = {
         id: Math.random().toString(36).substr(2, 9),
-        path: URL.createObjectURL(file),
-        name: file.name,
+        path: filePath, // Real file path for FFmpeg
+        previewUrl: previewUrl, // Browser URL for video player
+        name: fileName,
         durationSec: metadata.duration,
         width: metadata.width,
         height: metadata.height,
-        sizeBytes: file.size,
+        sizeBytes: metadata.size,
       };
 
+      console.log('✅ Media file created:', mediaFile);
       addMediaFile(mediaFile);
 
     } catch (error) {
@@ -63,15 +79,9 @@ export const MediaLibrary: React.FC = () => {
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      const file = files[0];
-      // Simulate file input change
-      const mockEvent = {
-        target: { files: [file] }
-      } as React.ChangeEvent<HTMLInputElement>;
-      handleFileSelect(mockEvent);
-    }
+    // For drag & drop, we'll just trigger the file dialog
+    // Tauri handles file drops through a different mechanism
+    handleFileSelect();
   };
 
   return (
@@ -87,7 +97,7 @@ export const MediaLibrary: React.FC = () => {
         className="border-2 border-dashed border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:border-gray-500 transition-colors cursor-pointer flex-shrink-0 mb-4"
         onDragOver={handleDragOver}
         onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
+        onClick={handleFileSelect}
       >
         {/* Folder Icon */}
         <div className="text-gray-400 mb-2">
@@ -105,14 +115,6 @@ export const MediaLibrary: React.FC = () => {
         <p className="text-xs text-gray-500 mt-2">MP4, MOV, WebM, AVI, MKV</p>
       </div>
 
-      {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="video/mp4,video/quicktime"
-        onChange={handleFileSelect}
-        className="hidden"
-      />
 
       {/* Media List - Scrollable */}
       {mediaLibrary.length > 0 && (

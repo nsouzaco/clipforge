@@ -13,7 +13,7 @@ export const VideoPreview: React.FC = () => {
 
   useEffect(() => {
     if (videoRef.current && selectedMedia && currentClip) {
-      videoRef.current.src = selectedMedia.path;
+      videoRef.current.src = selectedMedia.previewUrl;
       videoRef.current.currentTime = currentClip.inSec;
     }
   }, [selectedMedia, currentClip]);
@@ -35,7 +35,7 @@ export const VideoPreview: React.FC = () => {
             
             const media = mediaLibrary.find(m => m.id === clip.mediaId);
             if (media) {
-              videoRef.current.src = media.path;
+              videoRef.current.src = media.previewUrl;
             }
           }
 
@@ -59,7 +59,7 @@ export const VideoPreview: React.FC = () => {
       if (nextClip && videoRef.current) {
         const nextMedia = mediaLibrary.find(m => m.id === nextClip.mediaId);
         if (nextMedia) {
-          videoRef.current.src = nextMedia.path;
+          videoRef.current.src = nextMedia.previewUrl;
           videoRef.current.currentTime = nextClip.inSec;
           setPlayheadPosition(nextClip.startTimeSec);
           if (isPlaying) {
