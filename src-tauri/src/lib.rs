@@ -70,20 +70,25 @@ fn export_video(clips: Vec<ClipData>, output_path: String) -> Result<String, Str
         .collect::<Vec<String>>()
         .join("\n");
 
-    fs::write(&concat_list, concat_content)
+    fs::write(&concat_list, concat_content.clone())
         .map_err(|e| format!("Failed to write concat list: {}", e))?;
 
     println!("📋 Concat list created with {} files", trimmed_files.len());
+    println!("📄 Concat list content:\n{}", concat_content);
 
     // Step 3: Concatenate all trimmed clips
-    println!("🔗 Concatenating clips...");
+    println!("🔗 Concatenating clips with re-encoding for compatibility...");
     let output = Command::new("ffmpeg")
         .args(&[
             "-y",
             "-f", "concat",
             "-safe", "0",
             "-i", concat_list.to_str().unwrap(),
-            "-c", "copy", // Copy streams without re-encoding
+            "-c:v", "libx264",      // Re-encode video to ensure compatibility
+            "-preset", "fast",
+            "-crf", "22",
+            "-c:a", "aac",          // Re-encode audio
+            "-movflags", "+faststart",
             &output_path,
         ])
         .output()
@@ -91,8 +96,13 @@ fn export_video(clips: Vec<ClipData>, output_path: String) -> Result<String, Str
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        println!("❌ FFmpeg stderr:\n{}", stderr);
+        println!("📤 FFmpeg stdout:\n{}", stdout);
         return Err(format!("FFmpeg concat failed: {}", stderr));
     }
+    
+    println!("✅ Concat completed successfully");
 
     // Step 4: Clean up temp files
     println!("🧹 Cleaning up temp files...");
