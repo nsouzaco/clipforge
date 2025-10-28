@@ -1,0 +1,27 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "opener:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "fs:allow-desktop-read",
+    "fs:allow-desktop-read-recursive",
+    "fs:allow-download-read",
+    "fs:allow-download-read-recursive",
+    "fs:allow-video-read",
+    "fs:allow-video-read-recursive",
+    "fs:allow-read-file",
+    "fs:allow-read-text-file",
+    "fs:allow-temp-read",
+    "fs:allow-temp-read-recursive",
+    "fs:allow-temp-write",
+    "fs:allow-temp-write-recursive",
+    "mpv:default"
+  ]
+}
