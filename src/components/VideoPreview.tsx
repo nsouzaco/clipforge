@@ -18,6 +18,38 @@ export const VideoPreview: React.FC = () => {
     }
   }, [selectedMedia, currentClip]);
 
+  // Handle playhead position changes (e.g., user clicking on timeline)
+  useEffect(() => {
+    if (!isPlaying && videoRef.current && timeline.length > 0) {
+      // Find which clip the playhead is currently on
+      for (let i = 0; i < timeline.length; i++) {
+        const clip = timeline[i];
+        const clipDuration = clip.outSec - clip.inSec;
+        const clipEnd = clip.startTimeSec + clipDuration;
+
+        if (playheadPosition >= clip.startTimeSec && playheadPosition <= clipEnd) {
+          // Playhead is within this clip
+          if (currentClipIndexRef.current !== i) {
+            console.log('📍 Playhead moved to clip', i);
+            currentClipIndexRef.current = i;
+            
+            const media = mediaLibrary.find(m => m.id === clip.mediaId);
+            if (media) {
+              videoRef.current.src = media.path;
+            }
+          }
+
+          // Seek to the correct position within the clip (respecting trim points)
+          const relativePosition = playheadPosition - clip.startTimeSec;
+          const videoTime = clip.inSec + relativePosition;
+          videoRef.current.currentTime = videoTime;
+          
+          break;
+        }
+      }
+    }
+  }, [playheadPosition, isPlaying, timeline, mediaLibrary]);
+
   // Handle video ending - move to next clip
   const handleVideoEnded = useCallback(() => {
     if (currentClipIndexRef.current < timeline.length - 1) {
@@ -46,11 +78,20 @@ export const VideoPreview: React.FC = () => {
   const syncPlayhead = useCallback(() => {
     if (videoRef.current && isPlaying && currentClip) {
       const videoTime = videoRef.current.currentTime;
+      
+      // Check if we've reached the outSec trim point
+      if (videoTime >= currentClip.outSec) {
+        console.log('⏹️ Reached outSec trim point:', currentClip.outSec);
+        // Trigger moving to next clip or stopping
+        handleVideoEnded();
+        return;
+      }
+      
       const timelinePosition = currentClip.startTimeSec + (videoTime - currentClip.inSec);
       setPlayheadPosition(timelinePosition);
       animationFrameRef.current = requestAnimationFrame(syncPlayhead);
     }
-  }, [isPlaying, setPlayheadPosition, currentClip]);
+  }, [isPlaying, setPlayheadPosition, currentClip, handleVideoEnded]);
 
   useEffect(() => {
     if (isPlaying) {
@@ -81,6 +122,7 @@ export const VideoPreview: React.FC = () => {
   const stopPlayback = () => {
     useAppStore.getState().setIsPlaying(false);
     useAppStore.getState().setPlayheadPosition(0);
+    currentClipIndexRef.current = 0; // Reset to first clip
   };
 
   return (
