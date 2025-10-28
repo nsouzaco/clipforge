@@ -51,20 +51,6 @@ export const MediaLibrary: React.FC = () => {
 
       addMediaFile(mediaFile);
 
-      // Auto-add to timeline with actual duration
-      const timelineClip = {
-        id: Math.random().toString(36).substr(2, 9),
-        mediaId: mediaFile.id,
-        startTimeSec: 0,
-        inSec: 0,
-        outSec: mediaFile.durationSec, // Use actual video duration
-      };
-
-      addTimelineClip(timelineClip);
-      
-      // Select the clip
-      useAppStore.getState().selectClip(mediaFile.id);
-
     } catch (error) {
       console.error('Error importing file:', error);
       alert('Error importing file. Please try again.');
@@ -134,7 +120,12 @@ export const MediaLibrary: React.FC = () => {
           {mediaLibrary.map((media) => (
             <div 
               key={media.id}
-              className="bg-gray-700 rounded-md p-3 cursor-pointer hover:bg-gray-600 transition-colors"
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData('mediaId', media.id);
+                e.dataTransfer.effectAllowed = 'copy';
+              }}
+              className="bg-gray-700 rounded-md p-3 cursor-move hover:bg-gray-600 transition-colors"
               onClick={() => useAppStore.getState().selectClip(media.id)}
             >
               <div className="flex items-center space-x-3">

@@ -152,6 +152,40 @@ export const Timeline: React.FC = () => {
     useAppStore.getState().setPlayheadPosition(Math.min(timeSeconds, timelineDuration));
   };
 
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const mediaId = e.dataTransfer.getData('mediaId');
+    if (!mediaId) return;
+
+    const media = mediaLibrary.find(m => m.id === mediaId);
+    if (!media) return;
+
+    // Calculate drop position on timeline
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const dropTimeSeconds = Math.max(0, x / pixelsPerSecond);
+
+    // Create new timeline clip at drop position
+    const newClip = {
+      id: Math.random().toString(36).substr(2, 9),
+      mediaId: media.id,
+      startTimeSec: dropTimeSeconds,
+      inSec: 0,
+      outSec: media.durationSec,
+    };
+
+    useAppStore.getState().addTimelineClip(newClip);
+    useAppStore.getState().selectClip(media.id);
+  };
+
   const togglePlay = () => {
     useAppStore.getState().setIsPlaying(!isPlaying);
   };
@@ -205,8 +239,10 @@ export const Timeline: React.FC = () => {
       {/* Timeline Canvas */}
       <div 
         ref={containerRef}
-        className="w-full overflow-x-auto overflow-y-hidden bg-gray-700 rounded-lg"
+        className="w-full overflow-x-auto overflow-y-hidden bg-gray-700 rounded-lg relative"
         style={{ height: `${timelineHeight + 20}px` }}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
       >
         <canvas
           ref={canvasRef}
@@ -216,7 +252,7 @@ export const Timeline: React.FC = () => {
         />
         
         {/* Track Label */}
-        <div className="absolute left-2 top-16 text-xs text-gray-400 font-medium">
+        <div className="absolute left-2 top-16 text-xs text-gray-400 font-medium pointer-events-none">
           Track 1
         </div>
       </div>
