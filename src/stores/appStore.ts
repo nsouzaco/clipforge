@@ -153,6 +153,25 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ timeline: reorderedClips });
     console.log('✅ Timeline reordered');
   },
+
+  removeTimelineClip: (clipId: string) => {
+    const { timeline, selectedClip } = get();
+    
+    console.log('🗑️ Removing clip from timeline:', clipId);
+
+    // Remove the clip
+    const updatedTimeline = timeline.filter(clip => clip.id !== clipId);
+    
+    // Clear selection if the removed clip was selected
+    const newSelectedClip = selectedClip === clipId ? null : selectedClip;
+
+    set({ timeline: updatedTimeline, selectedClip: newSelectedClip });
+
+    // Reorder timeline to close gaps
+    get().reorderTimeline();
+    
+    console.log('✅ Clip removed from timeline');
+  },
   
   // Recording actions
   setIsRecording: (recording: boolean) => {

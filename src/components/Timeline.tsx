@@ -14,7 +14,8 @@ export const Timeline: React.FC = () => {
   const [trimDrag, setTrimDrag] = useState<TrimHandle | null>(null);
   const [hoveredHandle, setHoveredHandle] = useState<TrimHandle | null>(null);
   const [trimStartValues, setTrimStartValues] = useState<{ inSec: number; outSec: number } | null>(null);
-  const { timeline, playheadPosition, mediaLibrary, zoomLevel, setZoomLevel, draggingFile, appendClipToEnd, endDrag, updateTimelineClip, setPendingTrim } = useAppStore();
+  const [hoveredClipId, setHoveredClipId] = useState<string | null>(null);
+  const { timeline, playheadPosition, mediaLibrary, zoomLevel, setZoomLevel, draggingFile, appendClipToEnd, endDrag, updateTimelineClip, setPendingTrim, removeTimelineClip } = useAppStore();
 
   const basePixelsPerSecond = 50; // Base zoom level
   const pixelsPerSecond = basePixelsPerSecond * zoomLevel;
@@ -63,6 +64,26 @@ export const Timeline: React.FC = () => {
         if (x >= clipX + clipWidth - handleWidth && x <= clipX + clipWidth) {
           return { clipId: clip.id, type: 'right', clipIndex: index };
         }
+      }
+    }
+    
+    return null;
+  };
+
+  // Helper function to get clip at position
+  const getClipAtPosition = (x: number, y: number): { clip: TimelineClip; index: number } | null => {
+    for (let index = 0; index < timeline.length; index++) {
+      const clip = timeline[index];
+      const media = mediaLibrary.find(m => m.id === clip.mediaId);
+      if (!media) continue;
+
+      const clipWidth = (clip.outSec - clip.inSec) * pixelsPerSecond;
+      const clipX = clip.startTimeSec * pixelsPerSecond;
+      const trackY = rulerHeight + (index * (trackHeight + trackPadding));
+
+      // Check if position is within clip bounds
+      if (x >= clipX && x <= clipX + clipWidth && y >= trackY && y <= trackY + trackHeight) {
+        return { clip, index };
       }
     }
     
@@ -293,6 +314,12 @@ export const Timeline: React.FC = () => {
       setHoveredHandle(handle);
     }
 
+    // Update hovered clip (for delete button)
+    if (!trimDrag) {
+      const clipAtPos = getClipAtPosition(x, y);
+      setHoveredClipId(clipAtPos?.clip.id || null);
+    }
+
     // Handle trim dragging
     if (trimDrag) {
       const clip = timeline.find(c => c.id === trimDrag.clipId);
@@ -429,6 +456,37 @@ export const Timeline: React.FC = () => {
           onMouseUp={handleCanvasMouseUp}
           style={{ display: 'block', height: `${timelineHeight}px` }}
         />
+
+        {/* Delete buttons overlay */}
+        {timeline.map((clip, index) => {
+          const media = mediaLibrary.find(m => m.id === clip.mediaId);
+          if (!media) return null;
+
+          const clipWidth = (clip.outSec - clip.inSec) * pixelsPerSecond;
+          const clipX = clip.startTimeSec * pixelsPerSecond;
+          const trackY = rulerHeight + (index * (trackHeight + trackPadding));
+          const isHovered = hoveredClipId === clip.id;
+
+          if (!isHovered) return null;
+
+          return (
+            <button
+              key={`delete-${clip.id}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                removeTimelineClip(clip.id);
+              }}
+              className="absolute bg-red-600 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-lg transition-colors z-20"
+              style={{
+                left: `${clipX + clipWidth - 30}px`,
+                top: `${trackY + 5}px`,
+              }}
+              title="Delete clip"
+            >
+              ✕
+            </button>
+          );
+        })}
       </div>
     </div>
   );

@@ -83,6 +83,7 @@ export interface AppState {
   confirmTrim: () => void;
   cancelTrim: () => void;
   reorderTimeline: () => void;
+  removeTimelineClip: (clipId: string) => void;
   
   // Recording actions
   setIsRecording: (recording: boolean) => void;
