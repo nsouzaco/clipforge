@@ -1,11 +1,19 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useAppStore } from '../stores/appStore';
 
+type TrimHandle = {
+  clipId: string;
+  type: 'left' | 'right';
+  clipIndex: number;
+};
+
 export const Timeline: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = useState(false);
-  const { timeline, playheadPosition, mediaLibrary, isPlaying, zoomLevel, setZoomLevel, draggingFile, appendClipToEnd, endDrag } = useAppStore();
+  const [trimDrag, setTrimDrag] = useState<TrimHandle | null>(null);
+  const [hoveredHandle, setHoveredHandle] = useState<TrimHandle | null>(null);
+  const { timeline, playheadPosition, mediaLibrary, isPlaying, zoomLevel, setZoomLevel, draggingFile, appendClipToEnd, endDrag, updateTimelineClip } = useAppStore();
 
   const basePixelsPerSecond = 50; // Base zoom level
   const pixelsPerSecond = basePixelsPerSecond * zoomLevel;
@@ -30,6 +38,35 @@ export const Timeline: React.FC = () => {
   
   // Use the larger of actual duration or 30 minutes
   const timelineDuration = Math.max(actualTimelineDuration, maxTimelineDuration);
+
+  // Helper function to detect if a click is on a trim handle
+  const getTrimHandleAtPosition = (x: number, y: number): TrimHandle | null => {
+    const handleWidth = 8;
+    
+    for (let index = 0; index < timeline.length; index++) {
+      const clip = timeline[index];
+      const media = mediaLibrary.find(m => m.id === clip.mediaId);
+      if (!media) continue;
+
+      const clipWidth = (clip.outSec - clip.inSec) * pixelsPerSecond;
+      const clipX = clip.startTimeSec * pixelsPerSecond;
+      const trackY = rulerHeight + (index * (trackHeight + trackPadding));
+
+      // Check if Y is within track bounds
+      if (y >= trackY && y <= trackY + trackHeight) {
+        // Check left handle
+        if (x >= clipX && x <= clipX + handleWidth) {
+          return { clipId: clip.id, type: 'left', clipIndex: index };
+        }
+        // Check right handle
+        if (x >= clipX + clipWidth - handleWidth && x <= clipX + clipWidth) {
+          return { clipId: clip.id, type: 'right', clipIndex: index };
+        }
+      }
+    }
+    
+    return null;
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -164,16 +201,23 @@ export const Timeline: React.FC = () => {
 
       // Draw trim handles - more visible and separate
       const handleWidth = 8;
-      ctx.fillStyle = '#fbbf24'; // amber-400
+      const isLeftHovered = hoveredHandle?.clipId === clip.id && hoveredHandle?.type === 'left';
+      const isRightHovered = hoveredHandle?.clipId === clip.id && hoveredHandle?.type === 'right';
+      const isLeftDragging = trimDrag?.clipId === clip.id && trimDrag?.type === 'left';
+      const isRightDragging = trimDrag?.clipId === clip.id && trimDrag?.type === 'right';
       
       // Left trim handle
+      ctx.fillStyle = isLeftDragging ? '#fb923c' : isLeftHovered ? '#fcd34d' : '#fbbf24'; // amber variations
       ctx.fillRect(clipX, trackY, handleWidth, trackHeight);
-      ctx.strokeStyle = '#f59e0b'; // amber-500
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = isLeftDragging || isLeftHovered ? '#ea580c' : '#f59e0b'; // amber-600/500
+      ctx.lineWidth = isLeftDragging || isLeftHovered ? 2 : 1;
       ctx.strokeRect(clipX, trackY, handleWidth, trackHeight);
       
       // Right trim handle
+      ctx.fillStyle = isRightDragging ? '#fb923c' : isRightHovered ? '#fcd34d' : '#fbbf24'; // amber variations
       ctx.fillRect(clipX + clipWidth - handleWidth, trackY, handleWidth, trackHeight);
+      ctx.strokeStyle = isRightDragging || isRightHovered ? '#ea580c' : '#f59e0b'; // amber-600/500
+      ctx.lineWidth = isRightDragging || isRightHovered ? 2 : 1;
       ctx.strokeRect(clipX + clipWidth - handleWidth, trackY, handleWidth, trackHeight);
       
       // Draw trim handle indicators (vertical lines)
@@ -205,17 +249,86 @@ export const Timeline: React.FC = () => {
     ctx.arc(playheadX, rulerHeight / 2, 6, 0, Math.PI * 2);
     ctx.fill();
 
-  }, [timeline, playheadPosition, mediaLibrary, pixelsPerSecond, zoomLevel, timelineDuration]);
+  }, [timeline, playheadPosition, mediaLibrary, pixelsPerSecond, zoomLevel, timelineDuration, hoveredHandle, trimDrag]);
 
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
+    const x = e.clientX - rect.left + (containerRef.current?.scrollLeft || 0);
+    const y = e.clientY - rect.top + (containerRef.current?.scrollTop || 0);
+
+    console.log('🖱️ Canvas mousedown at:', { x, y });
+
+    // Check if clicking on a trim handle
+    const handle = getTrimHandleAtPosition(x, y);
+    if (handle) {
+      console.log('✂️ Trim handle clicked:', handle);
+      setTrimDrag(handle);
+      e.preventDefault();
+      return;
+    }
+
+    // Otherwise, move playhead
     const timeSeconds = x / pixelsPerSecond;
-    
+    console.log('⏱️ Moving playhead to:', timeSeconds.toFixed(2), 's');
     useAppStore.getState().setPlayheadPosition(Math.min(timeSeconds, timelineDuration));
+  };
+
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left + (containerRef.current?.scrollLeft || 0);
+    const y = e.clientY - rect.top + (containerRef.current?.scrollTop || 0);
+
+    // Update hovered handle
+    const handle = getTrimHandleAtPosition(x, y);
+    if (handle !== hoveredHandle) {
+      if (handle) {
+        console.log('👆 Hovering over trim handle:', handle);
+      }
+      setHoveredHandle(handle);
+    }
+
+    // Handle trim dragging
+    if (trimDrag) {
+      const clip = timeline.find(c => c.id === trimDrag.clipId);
+      const media = clip ? mediaLibrary.find(m => m.id === clip.mediaId) : null;
+      
+      if (clip && media) {
+        const timeSeconds = x / pixelsPerSecond;
+        
+        if (trimDrag.type === 'left') {
+          // Dragging left handle - adjust inSec
+          const newInSec = Math.max(0, Math.min(clip.outSec - 0.1, timeSeconds - clip.startTimeSec));
+          console.log('✂️ Trimming left handle:', { 
+            clipId: clip.id, 
+            oldInSec: clip.inSec.toFixed(2), 
+            newInSec: newInSec.toFixed(2) 
+          });
+          updateTimelineClip(clip.id, { inSec: newInSec });
+        } else {
+          // Dragging right handle - adjust outSec
+          const newOutSec = Math.min(media.durationSec, Math.max(clip.inSec + 0.1, timeSeconds - clip.startTimeSec));
+          console.log('✂️ Trimming right handle:', { 
+            clipId: clip.id, 
+            oldOutSec: clip.outSec.toFixed(2), 
+            newOutSec: newOutSec.toFixed(2) 
+          });
+          updateTimelineClip(clip.id, { outSec: newOutSec });
+        }
+      }
+    }
+  };
+
+  const handleCanvasMouseUp = () => {
+    if (trimDrag) {
+      console.log('✅ Trim drag ended:', trimDrag);
+      setTrimDrag(null);
+    }
   };
 
   const handleMouseEnter = () => {
@@ -314,10 +427,12 @@ export const Timeline: React.FC = () => {
           <div className="absolute inset-0 border-2 border-dashed border-blue-400 rounded-lg pointer-events-none z-10" />
         )}
         
-        <canvas
+        <canvas 
           ref={canvasRef}
-          className="cursor-pointer"
-          onClick={handleCanvasClick}
+          className={hoveredHandle || trimDrag ? 'cursor-ew-resize' : 'cursor-pointer'}
+          onMouseDown={handleCanvasMouseDown}
+          onMouseMove={handleCanvasMouseMove}
+          onMouseUp={handleCanvasMouseUp}
           style={{ display: 'block', height: `${timelineHeight}px` }}
         />
       </div>
