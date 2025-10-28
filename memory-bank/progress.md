@@ -1,44 +1,54 @@
 # Progress - ClipForge
 
 ## What Works
-- Project documentation and memory bank established
-- Clear technical requirements and constraints defined
-- Architecture patterns documented
+- ✅ MVP video editing features complete (Phase 1)
+- ✅ Timeline, trimming, and export functionality working
+- ✅ Recording features backend implemented (Phase 2)
+- ✅ Recording UI with tab-based navigation
+- ✅ Webcam preview and device selection
+- ✅ PiP overlay with drag and resize
+- ✅ Recording state management
+- ✅ Duration counter and status indicators
 
 ## What's Left to Build
 
-### Phase 1: Foundation (Day 1)
-- [ ] Tauri + React project scaffold
-- [ ] Tailwind CSS integration
-- [ ] Basic app window and layout structure
-- [ ] Tauri capabilities configuration
-- [ ] File import system (drag & drop + file picker)
-- [ ] FFmpeg integration for metadata probing
-- [ ] Video preview player with fixed sizing
-- [ ] Basic state management (Zustand)
+### Phase 2: Recording Features (Current)
+- [x] Rust backend - Screen recording framework
+- [x] Tauri commands for recording operations
+- [x] Frontend Recording UI (Record tab)
+- [x] Webcam integration with getUserMedia()
+- [x] PiP overlay component
+- [x] Recording state management
+- [x] Recording compositor utility
+- [x] Auto-import recorded files
+- [ ] **Actual screen capture implementation** (currently placeholder)
+- [ ] **Audio capture and mixing**
+- [ ] **FFmpeg-based compositing for PiP recordings**
+- [ ] **macOS screen recording permissions**
+- [ ] **Test all recording modes end-to-end**
 
-### Phase 2: Timeline & Editing (Day 2)
-- [ ] HTML5 Canvas timeline implementation
-- [ ] Time ruler with mm:ss format
-- [ ] Red playhead indicator
-- [ ] Clip block rendering
-- [ ] Trim handles (in/out points)
-- [ ] Timeline scrubbing and seeking
-- [ ] Play/pause controls
-- [ ] FFmpeg export functionality
+### Phase 3: Recording Enhancements
+- [ ] Window-specific recording (vs full screen)
+- [ ] Audio device selection
+- [ ] Recording quality settings
+- [ ] Preview during recording
+- [ ] Pause/resume recording
+- [ ] Recording keyboard shortcuts
+- [ ] Screen annotation tools
+- [ ] Multi-monitor support
 
-### Phase 3: Polish & Packaging (Day 3)
-- [ ] Keyboard shortcuts (Space, ←/→, Cmd+I, Cmd+E)
-- [ ] Error handling and user feedback
-- [ ] Progress indicators for export
-- [ ] Layout contract validation
+### Phase 4: Polish & Distribution
+- [ ] Comprehensive error handling
+- [ ] Recording permission flows
 - [ ] Performance optimization
-- [ ] App packaging and distribution
-- [ ] Final testing and QA
+- [ ] Memory leak prevention
+- [ ] App signing and notarization
+- [ ] DMG packaging with installer
+- [ ] User documentation
 
 ## Current Status
-**Phase**: Project Setup Complete
-**Next**: Initialize Tauri project structure
+**Phase**: Phase 2 - Recording Features (Implementation Complete, Testing Needed)
+**Next**: Implement actual screen capture with FFmpeg or AVFoundation
 
 ## Known Issues
 None identified yet.

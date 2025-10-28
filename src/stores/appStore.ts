@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { AppState, MediaFile, TimelineClip, PendingTrim } from '../types';
+import { AppState, MediaFile, TimelineClip, PendingTrim, RecordingMode, ScreenSource, PiPPosition } from '../types';
 
 export const useAppStore = create<AppState>((set, get) => ({
   mediaLibrary: [],
@@ -11,6 +11,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   draggingFile: null,
   dragCursor: { x: 0, y: 0 },
   pendingTrim: null,
+  
+  // Recording state
+  isRecording: false,
+  recordingMode: 'screen' as RecordingMode,
+  screenSources: [],
+  selectedScreenSource: null,
+  webcamEnabled: false,
+  audioEnabled: true,
+  recordingDuration: 0,
+  pipPosition: { x: 20, y: 20, width: 320, height: 240 },
 
   addMediaFile: (file: MediaFile) => {
     set((state) => ({
@@ -142,5 +152,40 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     set({ timeline: reorderedClips });
     console.log('✅ Timeline reordered');
+  },
+  
+  // Recording actions
+  setIsRecording: (recording: boolean) => {
+    set({ isRecording: recording });
+  },
+  
+  setRecordingMode: (mode: RecordingMode) => {
+    set({ recordingMode: mode });
+  },
+  
+  setScreenSources: (sources: ScreenSource[]) => {
+    set({ screenSources: sources });
+  },
+  
+  setSelectedScreenSource: (sourceId: string | null) => {
+    set({ selectedScreenSource: sourceId });
+  },
+  
+  setWebcamEnabled: (enabled: boolean) => {
+    set({ webcamEnabled: enabled });
+  },
+  
+  setAudioEnabled: (enabled: boolean) => {
+    set({ audioEnabled: enabled });
+  },
+  
+  setRecordingDuration: (duration: number | ((prev: number) => number)) => {
+    set((state) => ({
+      recordingDuration: typeof duration === 'function' ? duration(state.recordingDuration) : duration
+    }));
+  },
+  
+  setPipPosition: (position: PiPPosition) => {
+    set({ pipPosition: position });
   },
 }));

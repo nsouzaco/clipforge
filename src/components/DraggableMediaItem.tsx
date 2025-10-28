@@ -35,12 +35,15 @@ export const DraggableMediaItem: React.FC<DraggableMediaItemProps> = ({
     const loadThumbnail = async () => {
       try {
         setThumbnailLoading(true);
-        const { readFile } = await import('@tauri-apps/plugin-fs');
-        const fileData = await readFile(file.thumbnail!);
+        // TODO: Implement thumbnail loading with proper Tauri plugin
+        // const { readFile } = await import('@tauri-apps/plugin-fs');
+        // const fileData = await readFile(file.thumbnail!);
+        // const blob = new Blob([fileData], { type: 'image/jpeg' });
+        // const blobUrl = URL.createObjectURL(blob);
+        // setThumbnailSrc(blobUrl);
         
-        const blob = new Blob([fileData], { type: 'image/jpeg' });
-        const blobUrl = URL.createObjectURL(blob);
-        setThumbnailSrc(blobUrl);
+        // For now, use a placeholder or skip thumbnail loading
+        setThumbnailSrc(null);
       } catch (error) {
         console.warn('Failed to load thumbnail:', error);
         setThumbnailSrc(null);

@@ -1,6 +1,7 @@
 import { VideoPreview } from './components/VideoPreview';
 import { Timeline } from './components/Timeline';
 import { MediaLibrary } from './components/MediaLibrary';
+import { RecordPanel } from './components/RecordPanel';
 import { TrimConfirmationDialog } from './components/TrimConfirmationDialog';
 import { ExportDialog } from './components/ExportDialog';
 import { useAppStore } from './stores/appStore';
@@ -11,6 +12,7 @@ function App() {
   const [timelineHeight, setTimelineHeight] = useState(320);
   const [isResizing, setIsResizing] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'media' | 'record'>('media');
   const startYRef = useRef(0);
   const startHeightRef = useRef(320);
 
@@ -21,7 +23,7 @@ function App() {
     
     if (isResizing) {
       const deltaY = startYRef.current - e.clientY; // Positive when dragging up
-      const newHeight = Math.max(200, Math.min(800, startHeightRef.current + deltaY));
+      const newHeight = Math.max(60, Math.min(800, startHeightRef.current + deltaY));
       setTimelineHeight(newHeight);
     }
   };
@@ -54,24 +56,61 @@ function App() {
           <h1 className="text-xl font-bold text-white">ClipForge</h1>
           <span className="text-sm text-gray-400 ml-2">v2.0</span>
         </div>
-            <div className="flex gap-3">
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors">
-                Import
-              </button>
-              <button 
-                onClick={() => setIsExportDialogOpen(true)}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors"
-              >
-                Export
-              </button>
-            </div>
+        <div className="flex gap-3">
+          <button 
+            onClick={() => setActiveTab('record')}
+            className={`px-4 py-2 rounded-md transition-colors ${
+              activeTab === 'record'
+                ? 'bg-red-600 text-white'
+                : 'bg-gray-700 hover:bg-gray-600 text-white'
+            }`}
+          >
+            ⏺ Record
+          </button>
+          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors">
+            Import
+          </button>
+          <button 
+            onClick={() => setIsExportDialogOpen(true)}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors"
+          >
+            Export
+          </button>
+        </div>
       </header>
 
       {/* Main Content */}
       <div className="flex-1 flex">
-        {/* Left Panel - Media Library */}
-        <div className="w-80 bg-gray-800 border-r border-gray-700 p-4">
-          <MediaLibrary />
+        {/* Left Panel - Media Library or Record */}
+        <div className="w-80 bg-gray-800 border-r border-gray-700 p-4 flex flex-col">
+          {/* Tab Switcher */}
+          <div className="flex gap-2 mb-4 border-b border-gray-700 pb-2">
+            <button
+              onClick={() => setActiveTab('media')}
+              className={`flex-1 px-3 py-2 rounded-t-lg text-sm transition-colors ${
+                activeTab === 'media'
+                  ? 'bg-gray-700 text-white'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Media Library
+            </button>
+            <button
+              onClick={() => setActiveTab('record')}
+              className={`flex-1 px-3 py-2 rounded-t-lg text-sm transition-colors ${
+                activeTab === 'record'
+                  ? 'bg-gray-700 text-white'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Record
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          <div className="flex-1 overflow-y-auto">
+            {activeTab === 'media' ? <MediaLibrary /> : <RecordPanel />}
+          </div>
         </div>
 
         {/* Right Panel - Video Preview */}

@@ -3,6 +3,9 @@ use std::process::Command;
 use std::fs;
 use std::path::PathBuf;
 
+mod recording;
+mod video;
+
 #[derive(Debug, Serialize, Deserialize)]
 struct ClipData {
     source_path: String,
@@ -116,11 +119,86 @@ fn export_video(clips: Vec<ClipData>, output_path: String) -> Result<String, Str
     Ok(format!("Export completed: {}", output_path))
 }
 
+#[tauri::command]
+fn get_screen_sources() -> Result<Vec<recording::ScreenSource>, String> {
+    println!("📺 Getting available screen sources...");
+    let sources = recording::get_screen_sources();
+    println!("✅ Found {} screen sources", sources.len());
+    Ok(sources)
+}
+
+#[tauri::command]
+fn start_recording(
+    source_id: String,
+    options: recording::RecordingOptions,
+    output_path: String,
+) -> Result<(), String> {
+    recording::start_screen_recording(source_id, options, output_path)
+}
+
+#[tauri::command]
+fn stop_recording() -> Result<String, String> {
+    recording::stop_recording()
+}
+
+#[tauri::command]
+fn is_recording() -> bool {
+    recording::is_recording()
+}
+
+#[tauri::command]
+fn get_recording_duration() -> f64 {
+    recording::get_recording_duration()
+}
+
+#[tauri::command]
+fn import_video(path: String) -> Result<video::VideoMetadata, String> {
+    video::import_video(path).map_err(|e| e.message)
+}
+
+#[tauri::command]
+fn generate_thumbnail(path: String) -> Result<String, String> {
+    video::generate_thumbnail(path).map_err(|e| e.message)
+}
+
+#[tauri::command]
+fn save_blob_to_file(data: Vec<u8>, file_path: String) -> Result<String, String> {
+    use std::io::Write;
+    
+    println!("💾 Saving blob to file: {}", file_path);
+    println!("📦 Blob size: {} bytes", data.len());
+    
+    let path = std::path::Path::new(&file_path);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create directory: {}", e))?;
+    }
+    
+    let mut file = std::fs::File::create(&file_path)
+        .map_err(|e| format!("Failed to create file: {}", e))?;
+    
+    file.write_all(&data)
+        .map_err(|e| format!("Failed to write file: {}", e))?;
+    
+    println!("✅ Blob saved successfully to: {}", file_path);
+    Ok(file_path)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
-    .invoke_handler(tauri::generate_handler![export_video])
+    .invoke_handler(tauri::generate_handler![
+      export_video,
+      get_screen_sources,
+      start_recording,
+      stop_recording,
+      is_recording,
+      get_recording_duration,
+      import_video,
+      generate_thumbnail,
+      save_blob_to_file
+    ])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(

@@ -14,7 +14,7 @@ export const Timeline: React.FC = () => {
   const [trimDrag, setTrimDrag] = useState<TrimHandle | null>(null);
   const [hoveredHandle, setHoveredHandle] = useState<TrimHandle | null>(null);
   const [trimStartValues, setTrimStartValues] = useState<{ inSec: number; outSec: number } | null>(null);
-  const { timeline, playheadPosition, mediaLibrary, isPlaying, zoomLevel, setZoomLevel, draggingFile, appendClipToEnd, endDrag, updateTimelineClip, setPendingTrim } = useAppStore();
+  const { timeline, playheadPosition, mediaLibrary, zoomLevel, setZoomLevel, draggingFile, appendClipToEnd, endDrag, updateTimelineClip, setPendingTrim } = useAppStore();
 
   const basePixelsPerSecond = 50; // Base zoom level
   const pixelsPerSecond = basePixelsPerSecond * zoomLevel;

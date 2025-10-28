@@ -133,10 +133,21 @@ pub fn import_video(path: String) -> Result<VideoMetadata, VideoError> {
 
     let fps = parse_frame_rate(frame_rate_str);
 
-    // Get duration
+    // Get duration - try format first, then stream, then probe with ffprobe -count_packets
     let duration = parsed["format"]["duration"]
         .as_str()
         .and_then(|s| s.parse::<f64>().ok())
+        .or_else(|| {
+            // Try getting duration from stream (for WebM files)
+            stream.get("duration")
+                .and_then(|d| d.as_str())
+                .and_then(|s| s.parse::<f64>().ok())
+        })
+        .or_else(|| {
+            // Last resort: use ffprobe with count_packets for accurate WebM duration
+            println!("⚠️ Duration not in metadata, probing with count_packets...");
+            probe_duration_with_packets(&final_path).ok()
+        })
         .unwrap_or(60.0);
 
     println!(
@@ -297,6 +308,61 @@ fn parse_frame_rate(rate_str: &str) -> f64 {
         }
     }
     30.0 // Default
+}
+
+/// Probe duration using packet counting (for WebM files without duration metadata)
+fn probe_duration_with_packets(path: &str) -> Result<f64, VideoError> {
+    println!("🔍 Probing accurate duration for: {}", path);
+    
+    let output = Command::new("ffprobe")
+        .args([
+            "-v", "error",
+            "-count_packets",
+            "-show_entries", "stream=duration,nb_read_packets",
+            "-of", "json",
+            path,
+        ])
+        .output()
+        .map_err(|e| VideoError {
+            message: format!("FFprobe packet probe error: {}", e),
+        })?;
+
+    if !output.status.success() {
+        return Err(VideoError {
+            message: "FFprobe packet counting failed".to_string(),
+        });
+    }
+
+    let json_output = String::from_utf8_lossy(&output.stdout);
+    let parsed: serde_json::Value = serde_json::from_str(&json_output).map_err(|e| VideoError {
+        message: format!("JSON parse error: {}", e),
+    })?;
+
+    // Try to get duration from stream
+    if let Some(streams) = parsed["streams"].as_array() {
+        if let Some(stream) = streams.get(0) {
+            if let Some(duration_str) = stream["duration"].as_str() {
+                if let Ok(duration) = duration_str.parse::<f64>() {
+                    println!("✅ Accurate duration from packets: {:.2}s", duration);
+                    return Ok(duration);
+                }
+            }
+            
+            // Calculate from packet count and frame rate
+            if let Some(nb_packets) = stream["nb_read_packets"].as_str() {
+                if let Ok(packets) = nb_packets.parse::<f64>() {
+                    // Assume 30 fps for WebM
+                    let duration = packets / 30.0;
+                    println!("✅ Calculated duration from {} packets: {:.2}s", packets as i64, duration);
+                    return Ok(duration);
+                }
+            }
+        }
+    }
+
+    Err(VideoError {
+        message: "Could not determine duration from packets".to_string(),
+    })
 }
 
 /// Export video with given configuration

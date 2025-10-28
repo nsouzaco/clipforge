@@ -9,6 +9,26 @@ export type MediaFile = {
   sizeBytes: number;
 };
 
+export type ScreenSource = {
+  id: string;
+  name: string;
+  is_window: boolean;
+};
+
+export type RecordingOptions = {
+  include_audio: boolean;
+  audio_device: string | null;
+};
+
+export type RecordingMode = 'screen' | 'webcam' | 'screen-webcam';
+
+export type PiPPosition = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export type TimelineClip = {
   id: string;
   mediaId: string;
@@ -37,6 +57,16 @@ export interface AppState {
   dragCursor: { x: number; y: number };
   pendingTrim: PendingTrim | null;
   
+  // Recording state
+  isRecording: boolean;
+  recordingMode: RecordingMode;
+  screenSources: ScreenSource[];
+  selectedScreenSource: string | null;
+  webcamEnabled: boolean;
+  audioEnabled: boolean;
+  recordingDuration: number;
+  pipPosition: PiPPosition;
+  
   // Actions
   addMediaFile: (file: MediaFile) => void;
   selectClip: (clipId: string | null) => void;
@@ -53,4 +83,14 @@ export interface AppState {
   confirmTrim: () => void;
   cancelTrim: () => void;
   reorderTimeline: () => void;
+  
+  // Recording actions
+  setIsRecording: (recording: boolean) => void;
+  setRecordingMode: (mode: RecordingMode) => void;
+  setScreenSources: (sources: ScreenSource[]) => void;
+  setSelectedScreenSource: (sourceId: string | null) => void;
+  setWebcamEnabled: (enabled: boolean) => void;
+  setAudioEnabled: (enabled: boolean) => void;
+  setRecordingDuration: (duration: number | ((prev: number) => number)) => void;
+  setPipPosition: (position: PiPPosition) => void;
 }
