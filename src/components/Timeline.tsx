@@ -9,6 +9,7 @@ export const Timeline: React.FC<TimelineProps> = ({ draggingFile }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { timeline, setPlayheadPosition, selectClip, deselectClip, addClip, updateClip, deleteClip } = useAppStore();
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [zoom, setZoom] = useState(100);
   const [isHovering, setIsHovering] = useState(false);
@@ -416,11 +417,51 @@ export const Timeline: React.FC<TimelineProps> = ({ draggingFile }) => {
     setIsDragging(false);
   };
 
+  const handleTimelinePlayPause = () => {
+    // Find the first clip that should be playing at current playhead position
+    const currentClip = timeline.clips.find(clip => 
+      timeline.playheadPosition >= clip.startTime && 
+      timeline.playheadPosition < clip.startTime + clip.duration
+    );
+
+    if (currentClip) {
+      // Select the clip and trigger play
+      selectClip(currentClip.id);
+      setIsPlaying(!isPlaying);
+      
+      // Dispatch custom event to communicate with VideoPreview
+      window.dispatchEvent(new CustomEvent('timeline-play-pause', { 
+        detail: { isPlaying: !isPlaying, clipId: currentClip.id } 
+      }));
+    }
+  };
+
   return (
     <div className="h-64 bg-gray-800 text-white flex flex-col border-t border-gray-700">
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
-        <h3 className="text-base font-semibold">Timeline</h3>
+        <div className="flex items-center gap-4">
+          <h3 className="text-base font-semibold">Timeline</h3>
+          
+          {/* Timeline Play/Pause Button */}
+          <button
+            onClick={handleTimelinePlayPause}
+            className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center hover:bg-blue-700 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+            disabled={timeline.clips.length === 0}
+            title={isPlaying ? "Pause" : "Play"}
+          >
+            {isPlaying ? (
+              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            )}
+          </button>
+        </div>
+        
         <div className="flex items-center gap-3">
           <span className="text-xs text-gray-400">Zoom:</span>
           <input

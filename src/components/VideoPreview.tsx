@@ -10,7 +10,7 @@ export const VideoPreview: React.FC = () => {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [playbackRate, setPlaybackRate] = useState(1);
-  const { timeline, mediaLibrary, setPlayheadPosition } = useAppStore();
+  const { timeline, mediaLibrary, setPlayheadPosition, selectClip } = useAppStore();
 
   // Get the currently selected clip
   const selectedClip = timeline.clips.find(
@@ -67,8 +67,14 @@ export const VideoPreview: React.FC = () => {
     if (!video) return;
 
     const updateTime = () => {
+      console.log('Time update:', video.currentTime);
       setCurrentTime(video.currentTime);
-      setPlayheadPosition(video.currentTime);
+      // Update timeline playhead position accounting for clip's start time
+      if (selectedClip) {
+        setPlayheadPosition(selectedClip.startTime + video.currentTime);
+      } else {
+        setPlayheadPosition(video.currentTime);
+      }
     };
 
     const updateDuration = () => {
@@ -85,6 +91,18 @@ export const VideoPreview: React.FC = () => {
 
     const handleEnded = () => {
       setIsPlaying(false);
+      
+      // Auto-advance to next clip if available
+      if (selectedClip) {
+        const nextClip = timeline.clips
+          .filter(clip => clip.startTime > selectedClip.startTime)
+          .sort((a, b) => a.startTime - b.startTime)[0];
+          
+        if (nextClip) {
+          selectClip(nextClip.id);
+          setPlayheadPosition(nextClip.startTime);
+        }
+      }
     };
 
     video.addEventListener('timeupdate', updateTime);
@@ -101,6 +119,48 @@ export const VideoPreview: React.FC = () => {
       video.removeEventListener('ended', handleEnded);
     };
   }, [setPlayheadPosition]);
+
+  // Listen for timeline play/pause events
+  useEffect(() => {
+    const handleTimelinePlayPause = (event: CustomEvent) => {
+      const { isPlaying: timelineIsPlaying, clipId } = event.detail;
+      const video = videoRef.current;
+      
+      if (!video || !currentMedia) return;
+      
+      // Only respond if this is for the currently selected clip
+      if (selectedClip && selectedClip.id === clipId) {
+        if (timelineIsPlaying) {
+          video.play().catch(console.error);
+        } else {
+          video.pause();
+        }
+      }
+    };
+
+    window.addEventListener('timeline-play-pause', handleTimelinePlayPause as EventListener);
+    
+    return () => {
+      window.removeEventListener('timeline-play-pause', handleTimelinePlayPause as EventListener);
+    };
+  }, [selectedClip, currentMedia]);
+
+  // Handle playhead position changes from timeline (simplified)
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Find the clip that should be playing at the current playhead position
+    const currentClip = timeline.clips.find(clip => 
+      timeline.playheadPosition >= clip.startTime && 
+      timeline.playheadPosition < clip.startTime + clip.duration
+    );
+
+    // If playhead moved to a different clip, switch to it
+    if (currentClip && (!selectedClip || currentClip.id !== selectedClip.id)) {
+      selectClip(currentClip.id);
+    }
+  }, [timeline.playheadPosition, selectedClip, selectClip]);
 
   const handlePlayPause = async () => {
     const video = videoRef.current;
@@ -147,7 +207,12 @@ export const VideoPreview: React.FC = () => {
     const time = parseFloat(e.target.value);
     video.currentTime = time;
     setCurrentTime(time);
-    setPlayheadPosition(time);
+    // Update timeline playhead position accounting for clip's start time
+    if (selectedClip) {
+      setPlayheadPosition(selectedClip.startTime + time);
+    } else {
+      setPlayheadPosition(time);
+    }
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {

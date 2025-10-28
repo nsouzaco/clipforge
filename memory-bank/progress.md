@@ -61,6 +61,9 @@
 - [x] Video preview player (fixed playback issue)
 - [x] Video thumbnails
 - [x] Remove video functionality
+- [x] Timeline video playback synchronization
+- [x] Multi-clip timeline support
+- [x] Timeline play/pause controls
 - [ ] Trim functionality
 - [ ] Export single clip
 
