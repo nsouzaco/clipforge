@@ -13,9 +13,31 @@ struct OpenAITranscriptionRequest {
     model: String,
 }
 
+/// Check if video has an audio stream
+fn has_audio_stream(video_path: &str) -> Result<bool, String> {
+    let output = Command::new("ffprobe")
+        .args(&[
+            "-v", "error",
+            "-select_streams", "a:0",
+            "-show_entries", "stream=codec_type",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            video_path,
+        ])
+        .output()
+        .map_err(|e| format!("Failed to run ffprobe: {}", e))?;
+    
+    let result = String::from_utf8_lossy(&output.stdout);
+    Ok(result.trim() == "audio")
+}
+
 /// Extract audio from video file using FFmpeg
 pub fn extract_audio(video_path: &str) -> Result<String, String> {
     println!("🎵 Extracting audio from: {}", video_path);
+    
+    // Check if video has audio stream
+    if !has_audio_stream(video_path)? {
+        return Err("This video has no audio track to transcribe. Please use a video with audio.".to_string());
+    }
     
     // Create temp audio file path
     let audio_path = format!("/tmp/clipforge_audio_{}.mp3", 
