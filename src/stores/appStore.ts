@@ -36,7 +36,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   updateTimelineClip: (clipId: string, updates: Partial<TimelineClip>) => {
-    console.log('📝 Store: Updating timeline clip:', { clipId, updates });
     set((state) => ({
       timeline: state.timeline.map(clip => 
         clip.id === clipId ? { ...clip, ...updates } : clip

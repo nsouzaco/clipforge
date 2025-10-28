@@ -259,12 +259,10 @@ export const Timeline: React.FC = () => {
     const x = e.clientX - rect.left + (containerRef.current?.scrollLeft || 0);
     const y = e.clientY - rect.top + (containerRef.current?.scrollTop || 0);
 
-    console.log('🖱️ Canvas mousedown at:', { x, y });
-
     // Check if clicking on a trim handle
     const handle = getTrimHandleAtPosition(x, y);
     if (handle) {
-      console.log('✂️ Trim handle clicked:', handle);
+      console.log('✂️ Started trimming:', handle);
       setTrimDrag(handle);
       e.preventDefault();
       return;
@@ -272,7 +270,6 @@ export const Timeline: React.FC = () => {
 
     // Otherwise, move playhead
     const timeSeconds = x / pixelsPerSecond;
-    console.log('⏱️ Moving playhead to:', timeSeconds.toFixed(2), 's');
     useAppStore.getState().setPlayheadPosition(Math.min(timeSeconds, timelineDuration));
   };
 
@@ -287,9 +284,6 @@ export const Timeline: React.FC = () => {
     // Update hovered handle
     const handle = getTrimHandleAtPosition(x, y);
     if (handle !== hoveredHandle) {
-      if (handle) {
-        console.log('👆 Hovering over trim handle:', handle);
-      }
       setHoveredHandle(handle);
     }
 
@@ -304,20 +298,10 @@ export const Timeline: React.FC = () => {
         if (trimDrag.type === 'left') {
           // Dragging left handle - adjust inSec
           const newInSec = Math.max(0, Math.min(clip.outSec - 0.1, timeSeconds - clip.startTimeSec));
-          console.log('✂️ Trimming left handle:', { 
-            clipId: clip.id, 
-            oldInSec: clip.inSec.toFixed(2), 
-            newInSec: newInSec.toFixed(2) 
-          });
           updateTimelineClip(clip.id, { inSec: newInSec });
         } else {
           // Dragging right handle - adjust outSec
           const newOutSec = Math.min(media.durationSec, Math.max(clip.inSec + 0.1, timeSeconds - clip.startTimeSec));
-          console.log('✂️ Trimming right handle:', { 
-            clipId: clip.id, 
-            oldOutSec: clip.outSec.toFixed(2), 
-            newOutSec: newOutSec.toFixed(2) 
-          });
           updateTimelineClip(clip.id, { outSec: newOutSec });
         }
       }
@@ -326,7 +310,15 @@ export const Timeline: React.FC = () => {
 
   const handleCanvasMouseUp = () => {
     if (trimDrag) {
-      console.log('✅ Trim drag ended:', trimDrag);
+      const clip = timeline.find(c => c.id === trimDrag.clipId);
+      if (clip) {
+        console.log('✅ Trim completed:', {
+          type: trimDrag.type,
+          inSec: clip.inSec.toFixed(2),
+          outSec: clip.outSec.toFixed(2),
+          duration: (clip.outSec - clip.inSec).toFixed(2)
+        });
+      }
       setTrimDrag(null);
     }
   };
