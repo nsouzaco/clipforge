@@ -26,8 +26,10 @@ export const MediaLibrary: React.FC = () => {
       const filePath = selected as string;
       console.log('📁 Selected file:', filePath);
 
-      // Convert file path to URL for browser video player
+      // For Tauri v2, we need to use the asset protocol
+      // convertFileSrc adds the proper protocol prefix
       const previewUrl = convertFileSrc(filePath);
+      console.log('🔗 Preview URL:', previewUrl);
       
       // Create video element to get metadata
       const video = document.createElement('video');
